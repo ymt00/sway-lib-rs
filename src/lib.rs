@@ -21,7 +21,7 @@ impl<'a> Node<'a> {
     pub fn new(n: &'a JsonValue) -> Self {
         let representation: String;
         if n["representation"] != Null {
-            representation = Regex::new(r"H|V|T|S|\[|\]")
+            representation = Regex::new(r"[H|V|S|T]\[|\]")
                 .unwrap()
                 .replace_all(n["representation"].as_str().unwrap(), "")
                 .replace(" ", "\n");
