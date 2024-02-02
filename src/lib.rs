@@ -8,6 +8,7 @@ use std::str;
 
 const SWAYMSG_BIN: &str = "/usr/bin/swaymsg";
 const BEMENU_BIN: &str = "/usr/bin/bemenu";
+const WMENU_BIN: &str = "/usr/bin/wmenu";
 const ECHO_BIN: &str = "/usr/bin/echo";
 
 pub struct Node<'a> {
@@ -19,22 +20,20 @@ pub struct Node<'a> {
 
 impl<'a> Node<'a> {
     pub fn new(n: &'a JsonValue) -> Self {
-        let representation: String;
-        if n["representation"] != Null {
-            representation = Regex::new(r"[H|V|S|T]\[|\]")
+        let representation: String = if n["representation"] != Null {
+            Regex::new(r"[H|V|S|T]\[|\]")
                 .unwrap()
                 .replace_all(n["representation"].as_str().unwrap(), "")
-                .replace(" ", "\n");
+                .replace(' ', "\n")
         } else {
-            representation = "".to_string();
-        }
+            "".to_string()
+        };
 
-        let app_id: String;
-        if n["app_id"] != Null {
-            app_id = n["app_id"].to_string();
+        let app_id: String = if n["app_id"] != Null {
+            n["app_id"].to_string()
         } else {
-            app_id = "".to_string();
-        }
+            "".to_string()
+        };
 
         Self {
             representation,
@@ -63,7 +62,29 @@ pub fn bemenu(items: &str, args: &[&str]) -> String {
             .stdout,
     )
     .unwrap()
-    .trim_end_matches("\n")
+    .trim_end_matches('\n')
+    .to_string()
+}
+
+pub fn menu(items: &str, args: &[&str]) -> String {
+    str::from_utf8(
+        &Command::new(WMENU_BIN)
+            .args(args)
+            .stdin(Stdio::from(
+                Command::new(ECHO_BIN)
+                    .args(["-e", items])
+                    .stdout(Stdio::piped())
+                    .spawn()
+                    .unwrap()
+                    .stdout
+                    .unwrap(),
+            ))
+            .output()
+            .unwrap()
+            .stdout,
+    )
+    .unwrap()
+    .trim_end_matches('\n')
     .to_string()
 }
 
@@ -100,7 +121,7 @@ pub fn get_apps(node: Node) -> String {
 
     recursive_node_apps(node, &mut apps);
 
-    apps.trim_start_matches("\n").to_string()
+    apps.trim_start_matches('\n').to_string()
 }
 
 fn recursive_node_apps(node: Node, apps: &mut String) {
