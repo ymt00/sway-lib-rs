@@ -2,7 +2,6 @@ use json::{
     iterators::Members,
     JsonValue::{self, Null},
 };
-use regex::Regex;
 use std::process::{Command, Output, Stdio};
 use std::str;
 
@@ -12,7 +11,6 @@ const WMENU_BIN: &str = "/usr/bin/wmenu";
 const ECHO_BIN: &str = "/usr/bin/echo";
 
 pub struct Node<'a> {
-    representation: String,
     app_id: String,
     nodes: Members<'a>,
     floating_nodes: Members<'a>,
@@ -20,23 +18,15 @@ pub struct Node<'a> {
 
 impl<'a> Node<'a> {
     pub fn new(n: &'a JsonValue) -> Self {
-        let representation: String = if n["representation"] != Null {
-            Regex::new(r"[H|V|S|T]\[|\]")
-                .unwrap()
-                .replace_all(n["representation"].as_str().unwrap(), "")
-                .replace(' ', "\n")
-        } else {
-            "".to_string()
-        };
-
-        let app_id: String = if n["app_id"] != Null {
-            n["app_id"].to_string()
-        } else {
-            "".to_string()
-        };
-
+        let mut app_id: String = "".to_string();
+        if n["type"] == "con" || n["type"] == "floating_con" {
+            if n["app_id"] != Null && !n["app_id"].is_empty() {
+                app_id = n["app_id"].to_string()
+            } else if n["name"] != Null && !n["name"].is_empty() {
+                app_id = n["name"].to_string()
+            };
+        }
         Self {
-            representation,
             app_id,
             nodes: n["nodes"].members(),
             floating_nodes: n["floating_nodes"].members(),
@@ -92,7 +82,9 @@ pub fn scratchpad_show(app: &str) {
     Command::new(SWAYMSG_BIN)
         .args([format!("[app_id=\"{app}\"]").as_str(), "scratchpad", "show"])
         .spawn()
-        .expect("Command failed to execute");
+        .expect("Command failed to execute")
+        .wait()
+        .expect("Failed to wait on child");
 }
 
 pub fn get_workspaces() -> JsonValue {
@@ -115,8 +107,8 @@ pub fn get_tree() -> JsonValue {
 pub fn get_apps(node: Node) -> String {
     let mut apps: String = String::new();
 
-    if !node.representation.is_empty() {
-        apps.push_str(node.representation.as_str());
+    if !node.app_id.is_empty() {
+        apps.push_str(format!("\n{}", node.app_id).as_str());
     }
 
     recursive_node_apps(node, &mut apps);
