@@ -22,8 +22,8 @@ impl<'a> Node<'a> {
         if n["type"] == "con" || n["type"] == "floating_con" {
             if n["app_id"] != Null && !n["app_id"].is_empty() {
                 app_id = n["app_id"].to_string()
-            } else if n["name"] != Null && !n["name"].is_empty() {
-                app_id = n["name"].to_string()
+            } else if !n["window_properties"]["instance"].is_empty() {
+                app_id = n["window_properties"]["instance"].to_string()
             };
         }
         Self {
